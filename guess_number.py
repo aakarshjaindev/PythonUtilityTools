@@ -1,19 +1,28 @@
 import random
+
 def guess(x):
-  random_number = random.randint(1,x)
-  guess = 0 # starting  the number eist 
-  while guess != random_number:
-    guess = int(input(f'Gues a random number1 and {x}))
-    if guess < random_number:
-      print('sorry , guess agian. too low.')
-    elif guess > random_number:
-      print("sorry, guess again. Too high ')
-  print(f'yay, congrat. you have guess the number{ random_number) 
-    correctly !!' )
+    random_number = random.randint(1, x)
+    guess = 0
+    while guess != random_number:
+        guess = int(input(f'Guess a random number between 1 and {x}: '))
+        if guess < random_number:
+            print('Sorry, guess again. Too low.')
+        elif guess > random_number:
+            print("Sorry, guess again. Too high.")
+    print(f'Yay, congrats! You have guessed the number {random_number} correctly!!')
 
-
-computer_guess(x):
-low = 1 
-hight = x 
-feedback = ' ' 
-while feedback != 
+def computer_guess(x):
+    low = 1
+    high = x
+    feedback = ''
+    while feedback != 'c':
+        if low != high:
+            guess = random.randint(low, high)
+        else:
+            guess = low  # Could also be high because low == high
+        feedback = input(f'Is {guess} too high (H), too low (L), or correct (C)? ').lower()
+        if feedback == 'h':
+            high = guess - 1
+        elif feedback == 'l':
+            low = guess + 1
+    print(f'Yay! The computer guessed your number, {guess}, correctly!')
