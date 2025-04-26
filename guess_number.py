@@ -2,7 +2,7 @@ import random
 def guess(x):
   random_number = random.randint(1,x)
   guess = 0 # starting  the number eist 
-  while guess != random_Number:
+  while guess != random_number:
     guess = int(input(f'Gues a random number1 and {x}))
     if guess < random_number:
       print('sorry , guess agian. too low.')
@@ -17,5 +17,3 @@ low = 1
 hight = x 
 feedback = ' ' 
 while feedback != 
-    
-    e
