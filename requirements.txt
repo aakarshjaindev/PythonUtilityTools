@@ -1,0 +1,16 @@
+# Core dependencies
+matplotlib>=3.5.1
+plyer>=2.0.0
+opencv-python>=4.5.5.64  # For webcam access
+pytz>=2022.1  # For timezone handling
+pynput>=1.7.6  # For keyboard monitoring
+pandas>=1.4.1  # For data analysis
+PyPDF2>=2.10.5  # For PDF manipulation
+
+# Optional dependencies (uncomment as needed for other utilities)
+# requests>=2.27.1  # For weather API and web monitoring
+# beautifulsoup4>=4.11.1  # For web scraping
+# Pillow>=9.1.0  # For image processing
+# pygame>=2.1.2  # For audio playback
+# psutil>=5.9.0  # For system monitoring
+# pyperclip>=1.8.2  # For clipboard access 
