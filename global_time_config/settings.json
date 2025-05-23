@@ -1,0 +1,62 @@
+[
+  {
+    "name": "New York",
+    "timezone": "America/New_York",
+    "color": "#3498db",
+    "favorite": true
+  },
+  {
+    "name": "London",
+    "timezone": "Europe/London",
+    "color": "#e74c3c",
+    "favorite": true
+  },
+  {
+    "name": "Tokyo",
+    "timezone": "Asia/Tokyo",
+    "color": "#2ecc71",
+    "favorite": false
+  },
+  {
+    "name": "Sydney",
+    "timezone": "Australia/Sydney",
+    "color": "#f39c12",
+    "favorite": false
+  },
+  {
+    "name": "Los Angeles",
+    "timezone": "America/Los_Angeles",
+    "color": "#9b59b6",
+    "favorite": false
+  },
+  {
+    "name": "berlin",
+    "timezone": "Europe/Berlin",
+    "color": "#1abc9c",
+    "favorite": true
+  },
+  {
+    "name": "Madrid",
+    "timezone": "Europe/Madrid",
+    "color": "#d35400",
+    "favorite": true
+  },
+  {
+    "name": "Madrid",
+    "timezone": "Europe/Madrid",
+    "color": "#c0392b",
+    "favorite": false
+  },
+  {
+    "name": "Moscow",
+    "timezone": "Europe/Moscow",
+    "color": "#7f8c8d",
+    "favorite": false
+  },
+  {
+    "name": "S\u00e3o Paulo",
+    "timezone": "America/Sao_Paulo",
+    "color": "#27ae60",
+    "favorite": false
+  }
+]
