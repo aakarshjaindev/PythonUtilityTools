@@ -15,32 +15,57 @@ import argparse
 import sys
 
 class KeyboardMonitor:
+    """
+    Manages keyboard event listening, logging, and the Tkinter GUI for display.
+    """
     def __init__(self, log_dir="keyboard_logs"):
+        """
+        Initializes the KeyboardMonitor.
+
+        Sets up logging directories, loads existing data for the current day (or creates a new log structure),
+        and registers a function to save data upon program exit.
+
+        Args:
+            log_dir (str, optional): The directory where log files will be stored.
+                                     Defaults to "keyboard_logs".
+        """
         # Create logging directories
         self.log_dir = log_dir
         os.makedirs(self.log_dir, exist_ok=True)
         
         # Current date for logging
-        self.today = datetime.datetime.now().strftime("%Y-%m-%d")
-        self.log_file = os.path.join(self.log_dir, f"keyboard_log_{self.today}.json")
+        self.today = datetime.datetime.now().strftime("%Y-%m-%d") # Get current date for log file naming
+        self.log_file = os.path.join(self.log_dir, f"keyboard_log_{self.today}.json") # Construct full log file path
         
         # Load existing data or create new log structure
-        self.data = self.load_data()
+        self.data = self.load_data() # Load data or initialize new structure
         
         # For keyboard monitoring
-        self.listener = None
-        self.is_running = False
-        self.start_time = None
+        self.listener = None  # pynput keyboard listener instance
+        self.is_running = False  # Flag to indicate if monitoring is active
+        self.start_time = None  # Timestamp when monitoring started (not currently used in this snippet but good for context)
         
         # For GUI
-        self.root = None
-        self.stats_thread = None
+        self.root = None  # Tkinter root window (will be set if GUI is used)
+        self.stats_thread = None  # Thread for updating GUI statistics (if GUI is used)
         
         # Make sure to save when the program exits
-        atexit.register(self.save_data)
+        atexit.register(self.save_data)  # Ensure data is saved when the program exits gracefully
         
     def load_data(self):
-        """Load existing data for today or create new log structure"""
+        """
+        Loads keyboard activity data for the current day from a JSON file.
+        If the file doesn't exist or is corrupted, it initializes a new data structure.
+
+        The data structure includes:
+        - "hourly_counts": A dictionary mapping each hour (0-23) to keystroke counts.
+        - "total_count": Total keystrokes for the day.
+        - "start_time": ISO format timestamp of when logging for this data structure began.
+        - "keystrokes": A list of ISO format timestamps for each keystroke (actual keys are not logged).
+
+        Returns:
+            dict: The loaded or newly initialized data.
+        """
         if os.path.exists(self.log_file):
             try:
                 with open(self.log_file, 'r') as f:
@@ -49,50 +74,71 @@ class KeyboardMonitor:
                 # Make sure the structure is valid
                 if all(k in data for k in ["hourly_counts", "total_count", "start_time", "keystrokes"]):
                     return data
+            except json.JSONDecodeError as e:
+                print(f"Error decoding JSON from {self.log_file}: {e}. A new log file will be created.")
             except Exception as e:
-                print(f"Error loading data: {e}")
-                # If error, create new data structure
+                print(f"Error loading data from {self.log_file}: {e}. A new log file will be created.")
+                # If any other error, create new data structure
         
         # Create new data structure
         return {
-            "hourly_counts": {str(i): 0 for i in range(24)},  # Count per hour of day
-            "total_count": 0,
-            "start_time": datetime.datetime.now().isoformat(),
-            "keystrokes": []  # We don't record actual keys, just timestamps
+            "hourly_counts": {str(i): 0 for i in range(24)},  # Initialize counts for each hour of the day (0-23)
+            "total_count": 0,  # Total keystrokes for this session/day
+            "start_time": datetime.datetime.now().isoformat(),  # Record when this log structure was created
+            "keystrokes": []  # List to store timestamps of keystrokes (actual keys are not recorded for privacy)
         }
         
     def save_data(self):
-        """Save current data to log file"""
+        """
+        Saves the current keyboard activity data (self.data) to the JSON log file.
+        This is typically called periodically and upon program exit.
+        """
         if self.data:
             try:
                 with open(self.log_file, 'w') as f:
                     json.dump(self.data, f, indent=2)
                 print(f"Data saved to {self.log_file}")
+            except IOError as e:
+                print(f"Error writing data to {self.log_file}: {e}")
             except Exception as e:
-                print(f"Error saving data: {e}")
+                print(f"An unexpected error occurred while saving data to {self.log_file}: {e}")
                 
     def on_press(self, key):
-        """Callback function for key press events"""
+        """
+        Callback function triggered by the pynput listener whenever a key is pressed.
+
+        Updates the keystroke counts (total and hourly) and records the timestamp of the press.
+        It does NOT record the actual key pressed to maintain privacy.
+        Periodically saves data and triggers a GUI update if the GUI is active.
+
+        Args:
+            key: The key object from pynput (not used to store the actual key).
+        """
         # Record the current time
-        current_time = datetime.datetime.now()
-        hour = current_time.hour
+        current_time = datetime.datetime.now() # Get the precise time of the key press
+        hour = current_time.hour # Extract the hour for hourly counting
         
         # Update counters without recording the actual key
         self.data["total_count"] += 1
-        self.data["hourly_counts"][str(hour)] = self.data["hourly_counts"].get(str(hour), 0) + 1
+        self.data["hourly_counts"][str(hour)] = self.data["hourly_counts"].get(str(hour), 0) + 1 # Increment count for the current hour
         
         # Add timestamp to keystrokes list (without the actual key pressed)
-        self.data["keystrokes"].append(current_time.isoformat())
+        self.data["keystrokes"].append(current_time.isoformat()) # Add timestamp to the list of keystrokes
         
         # Save data periodically (every 100 keystrokes)
+        # Periodically save data to disk to prevent data loss (e.g., every 100 keystrokes)
         if self.data["total_count"] % 100 == 0:
             self.save_data()
-            # Also update the GUI if it's running
-            if self.root and self.root.winfo_exists():
-                self.root.event_generate("<<UpdateStats>>", when="tail")
+            # If the GUI is running, generate a custom event to trigger a stats update.
+            # This is a way to communicate from this (potentially non-GUI) thread to the GUI thread.
+            if self.root and self.root.winfo_exists(): # Check if GUI root window exists
+                self.root.event_generate("<<UpdateStats>>", when="tail") # Generate event for GUI to handle
     
     def start_monitoring(self):
-        """Start keyboard monitoring"""
+        """
+        Starts the keyboard monitoring process if it's not already running.
+        Initializes and starts the pynput keyboard listener in a separate thread.
+        """
         if not self.is_running:
             self.is_running = True
             self.start_time = datetime.datetime.now()
@@ -104,7 +150,10 @@ class KeyboardMonitor:
             print("Keyboard monitoring started.")
             
     def stop_monitoring(self):
-        """Stop keyboard monitoring"""
+        """Stops the keyboard monitoring process if it's currently running.
+
+        Stops the pynput listener and saves the current data before exiting.
+        """
         if self.is_running:
             self.is_running = False
             
@@ -116,7 +165,12 @@ class KeyboardMonitor:
             print("Keyboard monitoring stopped.")
             
     def get_stats(self):
-        """Calculate statistics from the collected data"""
+        """Calculates various statistics from the collected keystroke data.
+
+        Returns:
+            dict: A dictionary containing statistics like total keystrokes,
+                  hourly counts, peak hour, session duration, and keystrokes per minute.
+        """
         stats = {}
         
         # Calculate total keystrokes
@@ -147,7 +201,11 @@ class KeyboardMonitor:
         return stats
         
     def create_gui(self):
-        """Create a GUI for displaying statistics"""
+        """Creates and configures the main graphical user interface (GUI) for the application.
+
+        Sets up the window, frames, labels for statistics, control buttons, and the plot area.
+        Binds a custom event for updating stats from other threads.
+        """
         self.root = tk.Tk()
         self.root.title("Keyboard Activity Monitor")
         self.root.geometry("800x600")
@@ -208,7 +266,11 @@ class KeyboardMonitor:
         self.create_plot()
         
     def start_from_gui(self):
-        """Start monitoring from GUI button"""
+        """Handles the 'Start Monitoring' button click in the GUI.
+
+        Disables the start button, enables the stop button, starts the actual monitoring,
+        and launches a separate thread for periodic statistics updates in the GUI.
+        """
         self.start_button.config(state=tk.DISABLED)
         self.stop_button.config(state=tk.NORMAL)
         self.start_monitoring()
@@ -219,19 +281,31 @@ class KeyboardMonitor:
         self.stats_thread.start()
         
     def stop_from_gui(self):
-        """Stop monitoring from GUI button"""
+        """Handles the 'Stop Monitoring' button click in the GUI.
+
+        Enables the start button, disables the stop button, and stops the monitoring process.
+        """
         self.start_button.config(state=tk.NORMAL)
         self.stop_button.config(state=tk.DISABLED)
         self.stop_monitoring()
         
     def periodic_stats_update(self):
-        """Update stats display periodically"""
+        """Periodically triggers a GUI update to refresh the displayed statistics.
+
+        This function runs in a separate thread and generates a custom event
+        to safely update the GUI from a non-GUI thread.
+        It continues as long as monitoring is active and the GUI window exists.
+        """
         while self.is_running and self.root and self.root.winfo_exists():
             self.root.event_generate("<<UpdateStats>>", when="tail")
             time.sleep(5)  # Update every 5 seconds
             
     def update_stats_display(self):
-        """Update the stats display in the GUI"""
+        """Updates the statistics labels and the plot in the GUI.
+
+        Fetches the latest statistics using `get_stats` and updates the corresponding
+        Tkinter labels and redraws the hourly keystroke plot.
+        """
         stats = self.get_stats()
         
         # Update labels
@@ -248,7 +322,12 @@ class KeyboardMonitor:
         self.create_plot()
         
     def create_plot(self):
-        """Create or update the hourly keystrokes plot"""
+        """Creates or updates the Matplotlib bar chart showing keystrokes per hour.
+
+        Clears the previous plot, fetches current hourly data, and renders a new bar chart.
+        Highlights the current hour's bar in a different color.
+        The plot is embedded into the Tkinter GUI using `FigureCanvasTkAgg`.
+        """
         # Clear the plot frame
         for widget in self.plot_frame.winfo_children():
             widget.destroy()
@@ -284,21 +363,37 @@ class KeyboardMonitor:
         canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
         
     def run_gui(self):
-        """Run the GUI application"""
+        """Initializes and runs the Tkinter GUI application.
+
+        Calls `create_gui` to build the interface, performs an initial stats update,
+        sets up the window closing protocol, and starts the Tkinter main event loop.
+        """
         self.create_gui()
         self.update_stats_display()  # Initial update
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.root.mainloop()
         
     def on_closing(self):
-        """Handle window closing event"""
+        """Handles the event when the GUI window is closed.
+
+        Ensures that monitoring is stopped (if running) and data is saved
+        before the application exits and the Tkinter window is destroyed.
+        """
         if self.is_running:
             self.stop_monitoring()
         self.save_data()
         self.root.destroy()
         
     def generate_report(self, output_file=None):
-        """Generate a text report of keyboard activity"""
+        """Generates a text-based summary report of the keyboard activity.
+
+        Args:
+            output_file (str, optional): The path to save the report. 
+                                         Defaults to a timestamped file in the log directory.
+
+        Returns:
+            str: The path to the generated report file.
+        """
         stats = self.get_stats()
         
         if not output_file:
@@ -327,6 +422,14 @@ class KeyboardMonitor:
         return output_file
 
 def parse_arguments():
+    """Parses command-line arguments for the application.
+
+    Defines arguments for launching the GUI, starting/stopping monitoring in the background,
+    generating a report, and specifying an output file for the report.
+
+    Returns:
+        argparse.Namespace: An object containing the parsed command-line arguments.
+    """
     parser = argparse.ArgumentParser(description="Keyboard Activity Monitor")
     parser.add_argument('--gui', action='store_true', help="Launch the graphical user interface")
     parser.add_argument('--start', action='store_true', help="Start monitoring in background")
@@ -336,24 +439,34 @@ def parse_arguments():
     return parser.parse_args()
 
 if __name__ == "__main__":
-    args = parse_arguments()
+    # This block executes when the script is run directly.
+    args = parse_arguments() # Parse command-line arguments
     
-    monitor = KeyboardMonitor()
+    monitor = KeyboardMonitor() # Initialize the keyboard monitor
     
+    # Handle command-line arguments to determine the mode of operation
     if args.gui:
-        # Launch GUI
+        # Launch the graphical user interface
+        print("Launching GUI...")
         monitor.run_gui()
     elif args.start:
-        # Start monitoring in background
+        # Start monitoring in the background (headless mode)
+        print("Starting monitoring in background...")
         monitor.start_monitoring()
-        print("Keyboard monitoring started in background.")
-        print("Use '--stop' to stop monitoring or '--gui' to view statistics.")
+        print("Keyboard monitoring is now active in the background.")
+        print("To stop, run: python keyboard_monitor.py --stop")
+        print("To view stats in GUI, run: python keyboard_monitor.py --gui")
     elif args.stop:
-        # Stop monitoring
+        # Stop any active monitoring process
+        print("Stopping monitoring...")
         monitor.stop_monitoring()
+        print("Keyboard monitoring stopped.")
     elif args.report:
-        # Generate report
-        monitor.generate_report(args.output)
+        # Generate an activity report
+        print("Generating activity report...")
+        report_file = monitor.generate_report(args.output)
+        print(f"Report successfully generated: {report_file}")
     else:
-        # If no arguments, launch GUI by default
-        monitor.run_gui() 
+        # Default behavior: If no specific arguments are given, launch the GUI.
+        print("No specific arguments provided. Launching GUI by default...")
+        monitor.run_gui()

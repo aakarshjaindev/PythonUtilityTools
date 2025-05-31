@@ -10,7 +10,21 @@ import argparse
 from functools import partial
 
 class GlobalTimeApp:
+    """
+    A Tkinter application to display current time in various cities around the world.
+    Features include a main time display dashboard, a meeting planner, and configurable settings.
+    Settings (city list, preferences) are saved to and loaded from a JSON file.
+    Time updates are handled in a separate thread to keep the UI responsive.
+    """
     def __init__(self, root=None):
+        """
+        Initializes the GlobalTimeApp.
+
+        Args:
+            root (tk.Tk, optional): The root Tkinter window. If None, UI setup is skipped,
+                                    allowing the class to be used for non-GUI purposes (e.g., CLI).
+                                    Defaults to None.
+        """
         # Default cities and timezones
         self.default_cities = [
             {"name": "New York", "timezone": "America/New_York", "color": "#3498db", "favorite": True},
@@ -43,13 +57,23 @@ class GlobalTimeApp:
             self.setup_ui()
     
     def load_settings(self):
-        """Load settings from file or use defaults if file doesn't exist"""
+        """
+        Loads city settings from the JSON configuration file.
+        If the file doesn't exist or is corrupted, it uses and saves default settings.
+
+        Returns:
+            list: A list of city dictionaries, either loaded from file or defaults.
+        """
         if os.path.exists(self.config_file):
             try:
                 with open(self.config_file, 'r') as f:
+                    # Attempt to load city data from JSON file
                     return json.load(f)
-            except:
-                print("Error loading settings, using defaults")
+            except (json.JSONDecodeError, IOError, OSError) as e:
+                # Handle cases where the file is corrupted, not found, or unreadable
+                print(f"Error loading settings from {self.config_file}: {e}. Using default cities.")
+                # If loading fails, save and return the default cities
+                self.save_settings(self.default_cities) # Save defaults to create a valid file for next time
                 return self.default_cities
         else:
             # Save default settings
@@ -57,7 +81,13 @@ class GlobalTimeApp:
             return self.default_cities
     
     def save_settings(self, cities=None):
-        """Save current settings to file"""
+        """
+        Saves the provided list of cities (or current instance cities) to the JSON configuration file.
+
+        Args:
+            cities (list, optional): The list of city dictionaries to save.
+                                     If None, uses self.cities. Defaults to None.
+        """
         if cities is None:
             cities = self.cities
             
@@ -68,10 +98,15 @@ class GlobalTimeApp:
             print(f"Error saving settings: {e}")
     
     def setup_ui(self):
-        """Set up the user interface"""
+        """
+        Sets up the main user interface components for the application.
+        This includes the main window, title, styles, notebook for tabs (Time Display, Meeting Planner, Settings),
+        and initializes the content for each tab.
+        It also starts the background thread for continuous time updates and sets up the window close handler.
+        """
         self.root.title("Global Time Dashboard")
-        self.root.geometry("800x600")
-        self.root.resizable(True, True)
+        self.root.geometry("800x600")  # Set initial window size
+        self.root.resizable(True, True) # Allow window resizing
         
         # Create main frame
         main_frame = ttk.Frame(self.root, padding="20")
@@ -123,7 +158,14 @@ class GlobalTimeApp:
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         
     def setup_time_display(self, parent):
-        """Set up time display area"""
+        """
+        Sets up the time display area within the 'Time Display' tab.
+        It creates a scrollable frame to show time information for favorite cities.
+        Each city display includes a colored indicator, city name, current time, and current date.
+
+        Args:
+            parent (tk.Widget): The parent widget (frame) where the time display will be created.
+        """
         # Filter to show only favorite cities
         favorite_cities = [city for city in self.cities if city.get("favorite", False)]
         
@@ -183,7 +225,14 @@ class GlobalTimeApp:
                 ttk.Separator(scrollable_frame, orient="horizontal").pack(fill=tk.X, pady=10)
     
     def setup_meeting_planner(self, parent):
-        """Set up meeting planner tab"""
+        """
+        Sets up the 'Meeting Planner' tab.
+        This tab allows users to select a date and time in their local timezone
+        and see the corresponding times in other selected cities, helping to schedule meetings.
+
+        Args:
+            parent (tk.Widget): The parent widget (frame) where the meeting planner will be created.
+        """
         # Top frame for meeting time selection
         top_frame = ttk.Frame(parent)
         top_frame.pack(fill=tk.X, pady=(0, 20))
@@ -581,26 +630,65 @@ class GlobalTimeApp:
                 break
     
     def on_closing(self):
-        """Handle window closing"""
+        """
+        Handles the window closing event (e.g., user clicks the 'X' button).
+        It sets `self.running` to False to stop the time update thread,
+        waits for the thread to join, and then destroys the Tkinter root window.
+        This ensures a clean shutdown of the application.
+        """
         self.running = False
         if self.update_thread:
             self.update_thread.join(0.1)  # Give thread time to clean up
         self.root.destroy()
     
     def run(self):
-        """Run the application"""
+        """
+        Runs the Tkinter main event loop for the GUI application.
+        If the root window (`self.root`) hasn't been created yet (e.g., if the app was instantiated
+        for CLI use first), it initializes the root window and sets up the UI before starting the loop.
+        """
         if not self.root:
             self.root = tk.Tk()
             self.setup_ui()
         self.root.mainloop()
 
 def parse_arguments():
-    parser = argparse.ArgumentParser(description="Global Time Dashboard")
-    parser.add_argument('--cli', action='store_true', help="Show times in command line instead of GUI")
+    """
+    Parses command-line arguments for the application.
+    Allows the user to run in CLI mode or specify other options in the future.
+
+    Returns:
+        argparse.Namespace: An object containing the parsed command-line arguments.
+    """
+    parser = argparse.ArgumentParser(
+        description="Global Time Dashboard: Displays current time in multiple cities.",
+        epilog="Example: python global_time.py --cli"
+    )
+    parser.add_argument(
+        '--cli',
+        action='store_true',
+        help="Display current times for favorite cities in the command line and exit. Does not launch the GUI."
+    )
+    # Future arguments can be added here, e.g., --city "Timezone/City" to get specific time
+    # parser.add_argument(
+    #     "--city", 
+    #     type=str, 
+    #     help="Get current time for a specific city. Provide the Olson timezone name (e.g., 'America/New_York', 'Europe/London')."
+    # )
+    # parser.add_argument(
+    #     "--list-timezones", 
+    #     action="store_true", 
+    #     help="List all available Olson timezone names that can be used with the --city argument."
+    # )
     return parser.parse_args()
 
-def display_cli_times(app):
-    """Display current times in command line interface"""
+def display_cli_times(app: GlobalTimeApp):
+    """
+    Displays the current time for all favorite cities in the command line.
+
+    Args:
+        app (GlobalTimeApp): An instance of the GlobalTimeApp, used to access city settings.
+    """
     print("\n=== GLOBAL TIME DASHBOARD ===")
     print(f"Current local time: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
     
@@ -613,11 +701,35 @@ def display_cli_times(app):
     print("\nUse --gui to launch the graphical interface")
 
 if __name__ == "__main__":
+    # This is the main entry point of the script.
+    
+    # Parse command-line arguments first to determine mode of operation.
     args = parse_arguments()
     
+    # Create an instance of our main application class.
+    # The __init__ method loads settings but doesn't create the GUI root window yet.
     app = GlobalTimeApp()
     
+    # Check if CLI mode was requested.
     if args.cli:
+        # If --cli flag is present, display times in the console and exit.
         display_cli_times(app)
+    # elif args.city: # Example for future expansion
+    #     try:
+    #         target_timezone = pytz.timezone(args.city)
+    #         current_time_in_city = datetime.datetime.now(target_timezone)
+    #         print(f"Current time in {args.city} ({target_timezone.zone}): {current_time_in_city.strftime('%Y-%m-%d %H:%M:%S %Z%z')}")
+    #     except pytz.exceptions.UnknownTimeZoneError:
+    #         print(f"Error: Timezone '{args.city}' is not recognized. "
+    #               f"Consider using --list-timezones if implemented.")
+    #     except Exception as e:
+    #         print(f"An unexpected error occurred: {e}")
+    # elif args.list_timezones: # Example for future expansion
+    #     print("Available Olson timezones:")
+    #     for tz_name in sorted(pytz.all_timezones):
+    #         print(f"- {tz_name}")
     else:
-        app.run() 
+        # If not in CLI mode (or other future CLI modes), run the GUI application.
+        # The app.run() method will create the Tkinter root window if it doesn't exist
+        # and start the main event loop.
+        app.run()
