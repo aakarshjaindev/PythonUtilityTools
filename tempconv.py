@@ -1,3 +1,4 @@
+'''
 def temperature_converter():
     print("Temperature Converter")
     print("1. Celsius to Fahrenheit")
@@ -16,3 +17,20 @@ def temperature_converter():
         print("Invalid choice. Please try again.")
 
 temperature_converter()
+
+
+'''
+
+
+print( ' welcome the temperature converter program. Let me help you with converting the temperature you need')
+
+temp = int(input(" what is the conversion you are expecting from? 1- F to C, 2- C to F"))
+
+value = int(input(' what is the temperature values'))
+
+
+if temp == '1': 
+    value = (value - 32) * 9/5
+print(f'your converted temperature is {value}') 
+    
+

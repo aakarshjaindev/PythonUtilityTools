@@ -1,10 +1,8 @@
-import pynput
 from pynput import keyboard
 import time
 import datetime
 import os
 import json
-import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import tkinter as tk
@@ -12,7 +10,6 @@ from tkinter import ttk
 import threading
 import atexit
 import argparse
-import sys
 
 class KeyboardMonitor:
     """

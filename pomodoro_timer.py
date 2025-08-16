@@ -1,7 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import time
-import json
 import os
 import datetime
 import matplotlib.pyplot as plt

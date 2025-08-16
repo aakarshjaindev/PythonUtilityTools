@@ -12,8 +12,6 @@ Programmer Beast Mode Spotify playlist: https://open.spotify.com/playlist/4Akns5
 Project specs, files, code all over the place? Start using Backlog for efficient management!! There is a free tier: https://cutt.ly/ehxImv5
 """
 
-import random
-import re
 
 # Creating a board object to represent the minesweeper board
 # This is so that when we code up the game, we can just say "create a new board object"
